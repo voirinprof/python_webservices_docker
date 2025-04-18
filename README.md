@@ -26,14 +26,12 @@ Before you begin, ensure you have the following installed:
    git clone https://github.com/voirinprof/python_webservices_docker.git
    cd python_webservices_docker
    ```
-
 
 2. **Build and run the containers:**
 
    ```bash
    docker-compose up --build
    ```
-
 
 3. **Access the applications:**
 
