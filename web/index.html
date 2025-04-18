@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Flask and FastAPI Endpoints</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        #map { height: 400px; width: 100%; margin-top: 20px; }
+        .section { margin-bottom: 20px; }
+        input, button { margin: 5px; padding: 5px; }
+        #output { margin-top: 10px; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>Test Flask and FastAPI Endpoints</h1>
+
+    <div class="section">
+        <h2>Flask API</h2>
+        <button onclick="fetchPoints('/flask')">Get All Points (GET /flask/points)</button>
+        <h3>Filter Points (POST /flask/points/filter)</h3>
+        <input type="number" id="flaskMinValue" placeholder="Min Value (e.g., 50)">
+        <input type="text" id="flaskNameContains" placeholder="Name Contains (e.g., Point)">
+        <button onclick="filterPoints('/flask')">Filter Points</button>
+    </div>
+
+    <div class="section">
+        <h2>FastAPI</h2>
+        <button onclick="fetchPoints('/fastapi')">Get All Points (GET /fastapi/points)</button>
+        <h3>Filter Points (POST /fastapi/points/filter)</h3>
+        <input type="number" id="fastapiMinValue" placeholder="Min Value (e.g., 50)">
+        <input type="text" id="fastapiNameContains" placeholder="Name Contains (e.g., Point)">
+        <button onclick="filterPoints('/fastapi')">Filter Points</button>
+    </div>
+
+    <div id="map"></div>
+    <pre id="output"></pre>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Initialize Leaflet map
+        const map = L.map('map').setView([0, 0], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Store markers to clear them later
+        let markers = [];
+
+        // Function to clear existing markers
+        function clearMarkers() {
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+        }
+
+        // Function to display points on map
+        function displayPoints(geojson) {
+            clearMarkers();
+            const geoJsonLayer = L.geoJSON(geojson, {
+                onEachFeature: (feature, layer) => {
+                    layer.bindPopup(`Name: ${feature.properties.name}<br>Value: ${feature.properties.value}`);
+                }
+            }).addTo(map);
+            markers.push(geoJsonLayer);
+            map.fitBounds(geoJsonLayer.getBounds());
+        }
+
+        // Function to fetch all points (GET /points)
+        async function fetchPoints(api) {
+            try {
+                const response = await fetch(`${api}/points`);
+                if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+                const data = await response.json();
+                document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+                displayPoints(data);
+            } catch (error) {
+                document.getElementById('output').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        // Function to filter points (POST /points/filter)
+        async function filterPoints(api) {
+            const minValue = document.getElementById(`${api === '/flask' ? 'flask' : 'fastapi'}MinValue`).value;
+            const nameContains = document.getElementById(`${api === '/flask' ? 'flask' : 'fastapi'}NameContains`).value;
+            const body = {};
+            if (minValue) body.min_value = parseInt(minValue);
+            if (nameContains) body.name_contains = nameContains;
+
+            try {
+                const response = await fetch(`${api}/points/filter`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+                const data = await response.json();
+                document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+                displayPoints(data);
+            } catch (error) {
+                document.getElementById('output').textContent = `Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
